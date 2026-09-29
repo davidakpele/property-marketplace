@@ -144,10 +144,9 @@ func main() {
 	agentRepo := agentrepo.NewPostgresAgentRepository(pool)
 
 	listingSvc := listing.NewService(listingRepo)
-	agentSvc := agent.NewService(agentRepo)
 	searchSvc := search.NewService(listingRepo, cacheClient)
 
-	_ = agentSvc
+	_ = agent.NewService(agentRepo)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
