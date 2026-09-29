@@ -1,0 +1,453 @@
+basePath: /api/v1
+definitions:
+  github_com_davidakpele_property-marketplace_pkg_pagination.Meta:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  internal_health.HealthResponse:
+    properties:
+      database:
+        example: ok
+        type: string
+      status:
+        example: ok
+        type: string
+      timestamp:
+        type: string
+    type: object
+  internal_listing_handler.CreateListingRequest:
+    properties:
+      address:
+        example: 14 Admiralty Way, Lekki Phase 1
+        maxLength: 500
+        minLength: 3
+        type: string
+      agent_id:
+        example: a1000000-0000-0000-0000-000000000001
+        type: string
+      bedrooms:
+        example: 3
+        minimum: 0
+        type: integer
+      description:
+        example: Spacious and modern flat
+        type: string
+      latitude:
+        example: 6.4281
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        example: 3.4219
+        maximum: 180
+        minimum: -180
+        type: number
+      price:
+        example: 1500000
+        type: number
+      title:
+        example: 3-Bed Flat in Lekki
+        maxLength: 500
+        minLength: 3
+        type: string
+      type:
+        enum:
+        - rent
+        - sale
+        - shortlet
+        example: rent
+        type: string
+    required:
+    - address
+    - agent_id
+    - latitude
+    - longitude
+    - price
+    - title
+    - type
+    type: object
+  internal_listing_handler.DataListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_listing_handler.ListingResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_davidakpele_property-marketplace_pkg_pagination.Meta'
+    type: object
+  internal_listing_handler.DataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_listing_handler.ListingResponse'
+    type: object
+  internal_listing_handler.ErrorResponse:
+    properties:
+      message:
+        example: listing not found
+        type: string
+    type: object
+  internal_listing_handler.ListingResponse:
+    properties:
+      address:
+        example: 14 Admiralty Way, Lekki Phase 1
+        type: string
+      agent_id:
+        example: a1000000-0000-0000-0000-000000000001
+        type: string
+      bedrooms:
+        example: 3
+        type: integer
+      created_at:
+        type: string
+      description:
+        example: Spacious and modern flat
+        type: string
+      id:
+        example: b1000000-0000-0000-0000-000000000001
+        type: string
+      latitude:
+        example: 6.4281
+        type: number
+      longitude:
+        example: 3.4219
+        type: number
+      price:
+        example: 1500000
+        type: number
+      title:
+        example: 3-Bed Flat in Lekki
+        type: string
+      type:
+        example: rent
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_listing_handler.UpdateListingRequest:
+    properties:
+      address:
+        example: 14 Admiralty Way, Lekki Phase 1
+        maxLength: 500
+        minLength: 3
+        type: string
+      agent_id:
+        example: a1000000-0000-0000-0000-000000000001
+        type: string
+      bedrooms:
+        example: 3
+        minimum: 0
+        type: integer
+      description:
+        example: Updated description
+        type: string
+      latitude:
+        example: 6.4281
+        maximum: 90
+        minimum: -90
+        type: number
+      longitude:
+        example: 3.4219
+        maximum: 180
+        minimum: -180
+        type: number
+      price:
+        example: 1800000
+        type: number
+      title:
+        example: Updated 3-Bed Flat
+        maxLength: 500
+        minLength: 3
+        type: string
+      type:
+        enum:
+        - rent
+        - sale
+        - shortlet
+        example: sale
+        type: string
+    required:
+    - address
+    - agent_id
+    - latitude
+    - longitude
+    - price
+    - title
+    - type
+    type: object
+  internal_listing_handler.ValidationErrorResponse:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/internal_listing_handler.ValidationFieldError'
+        type: array
+    type: object
+  internal_listing_handler.ValidationFieldError:
+    properties:
+      field:
+        example: price
+        type: string
+      message:
+        example: must be greater than 0
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: API Support
+  description: REST API for property listings with geospatial search.
+  title: Property Marketplace API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_health.HealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/internal_health.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /listings:
+    get:
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_listing_handler.DataListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+      summary: List all listings
+      tags:
+      - listings
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Listing payload
+        in: body
+        name: listing
+        required: true
+        schema:
+          $ref: '#/definitions/internal_listing_handler.CreateListingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_listing_handler.DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ValidationErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+      summary: Create a listing
+      tags:
+      - listings
+  /listings/{id}:
+    delete:
+      parameters:
+      - description: Listing UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+      summary: Delete a listing
+      tags:
+      - listings
+    get:
+      parameters:
+      - description: Listing UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_listing_handler.DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+      summary: Get a listing by ID
+      tags:
+      - listings
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Listing UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated listing payload
+        in: body
+        name: listing
+        required: true
+        schema:
+          $ref: '#/definitions/internal_listing_handler.UpdateListingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_listing_handler.DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ValidationErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+      summary: Update a listing
+      tags:
+      - listings
+  /listings/search:
+    get:
+      parameters:
+      - description: Listing type
+        enum:
+        - rent
+        - sale
+        - shortlet
+        in: query
+        name: type
+        type: string
+      - description: Minimum price
+        in: query
+        name: min_price
+        type: number
+      - description: Maximum price
+        in: query
+        name: max_price
+        type: number
+      - description: Number of bedrooms
+        in: query
+        name: bedrooms
+        type: integer
+      - description: Latitude of search origin
+        in: query
+        name: lat
+        type: number
+      - description: Longitude of search origin
+        in: query
+        name: lng
+        type: number
+      - description: Search radius in kilometres
+        in: query
+        name: radius_km
+        type: number
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_listing_handler.DataListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ValidationErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_listing_handler.ErrorResponse'
+      summary: Search listings
+      tags:
+      - listings
+swagger: "2.0"
+tags:
+- description: CRUD and search operations for property listings
+  name: listings
+- description: Service health check
+  name: health
