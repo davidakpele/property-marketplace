@@ -240,7 +240,7 @@ func doRequest(t *testing.T, r *gin.Engine, method, path string, body interface{
 	if body != nil {
 		require.NoError(t, json.NewEncoder(&b).Encode(body))
 	}
-	req, err := http.NewRequest(method, path, &b)
+	req, err := http.NewRequestWithContext(context.Background(), method, path, &b)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
