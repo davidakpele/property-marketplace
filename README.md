@@ -1,6 +1,6 @@
 # Property Marketplace API
 
-A property listing REST API built with Go, PostgreSQL + PostGIS, and Redis. It supports full CRUD for listings, geospatial radius search, Redis-backed caching, and is fully containerised with Docker Compose.
+A property listing REST API built with Go, PostgreSQL + PostGIS, and Redis. It supports full CRUD for listings and agents, geospatial radius search, Redis-backed caching, and is fully containerised with Docker Compose behind a production-grade nginx reverse proxy.
 
 ---
 
@@ -15,6 +15,8 @@ A property listing REST API built with Go, PostgreSQL + PostGIS, and Redis. It s
   - [Running tests](#running-tests)
 - [API Reference](#api-reference)
 - [Interactive Docs](#interactive-docs)
+- [Nginx Architecture](#nginx-architecture)
+- [Query Logging](#query-logging)
 - [Design Choices](#design-choices)
 - [What I'd Improve with More Time](#what-id-improve-with-more-time)
 
@@ -34,7 +36,7 @@ A property listing REST API built with Go, PostgreSQL + PostGIS, and Redis. It s
 | API docs       | Swagger UI (swaggo/gin-swagger) |
 | Testing        | testify + pgx pool              |
 | Containers     | Docker + Docker Compose         |
-| Reverse proxy  | nginx                           |
+| Reverse proxy  | nginx 1.27 (multi-file config)  |
 | CI/CD          | GitHub Actions                  |
 
 ---
@@ -45,21 +47,39 @@ A property listing REST API built with Go, PostgreSQL + PostGIS, and Redis. It s
 .
 ├── cmd/api/              # Application entry point
 ├── configs/              # application.yaml — single source of config
-├── deployments/          # Dockerfile, docker-compose.yml, nginx.conf
+├── deployments/
+│   ├── Dockerfile        # Multi-stage Go build → alpine runtime
+│   ├── docker-compose.yml
+│   └── nginx/
+│       ├── Dockerfile    # nginx image built from conf.d directory
+│       ├── nginx.conf    # Main nginx config (worker tuning, gzip, log formats)
+│       └── conf.d/
+│           ├── 01-security-headers.conf   # CSP, X-Frame-Options, HSTS headers
+│           ├── 02-rate-limiting.conf      # Per-zone rate limit definitions
+│           ├── 03-bot-detection.conf      # Malicious request and UA maps
+│           ├── 04-upstreams.conf          # property_api upstream (keepalive)
+│           ├── 05-server-http.conf        # Main server block with all locations
+│           ├── 06-server-https.conf       # TLS block (commented, ready to enable)
+│           ├── 07-error-pages.conf        # JSON error responses for all 4xx/5xx
+│           ├── 08-security-blocks.conf    # Attack pattern location blocks
+│           ├── 10-health-checks.conf      # /nginx-health and /backend-health
+│           ├── 11-content-cache.conf      # Cache bypass maps
+│           ├── globalblacklist.conf       # Bad bot user-agent blocklist
+│           └── swagger-locations.conf     # /swagger/ proxy + redirect rules
 ├── docs/                 # Auto-generated Swagger docs (swag init)
 ├── internal/
-│   ├── agent/            # Agent domain, repository, service
+│   ├── agent/            # Agent domain, repository, handler, service
 │   ├── health/           # Health check handler
 │   ├── listing/
-│   │   ├── application/  # One use-case per operation (create, get, update, delete, search)
-│   │   ├── domain/       # Listing entity, ListingType enum, SearchFilters
+│   │   ├── application/  # One use-case per operation
+│   │   ├── domain/       # Listing entity, ListingType enum, SearchFilters, errors
 │   │   ├── handler/      # HTTP handlers, request/response types
 │   │   └── repository/   # Repository interface + PostgreSQL implementation
 │   └── search/           # Search service with Redis cache-aside
 ├── migrations/           # SQL migration files (up + down)
 ├── pkg/
 │   ├── cache/            # Redis client wrapper
-│   ├── database/         # pgxpool setup + migration runner
+│   ├── database/         # pgxpool setup, migration runner, query tracer
 │   ├── httpx/            # Standardised error and response helpers
 │   ├── logger/           # logrus wrapper
 │   ├── pagination/       # Page/per_page parsing and Meta struct
@@ -80,17 +100,17 @@ A property listing REST API built with Go, PostgreSQL + PostGIS, and Redis. It s
 
 ### Running with Docker
 
-All configuration lives in `configs/application.yaml`. Open it and set your passwords before starting:
+All configuration lives in `configs/application.yaml`. Open it and confirm the passwords match the values in `docker-compose.yml`:
 
 ```yaml
 database:
   password: changeme # must match POSTGRES_PASSWORD in docker-compose.yml
 
 redis:
-  password: redispass # must match the --requirepass value in docker-compose.yml
+  password: redispass # must match --requirepass in docker-compose.yml
 ```
 
-Then start everything:
+Start everything:
 
 ```bash
 docker compose -f deployments/docker-compose.yml up -d --build
@@ -98,12 +118,14 @@ docker compose -f deployments/docker-compose.yml up -d --build
 
 This starts four containers — `postgres` (PostGIS), `redis`, `api`, and `nginx`. Database migrations run automatically on startup.
 
-| Service      | URL                                 |
-| ------------ | ----------------------------------- |
-| API (nginx)  | http://localhost                    |
-| API (direct) | http://localhost:8080               |
-| Swagger UI   | http://localhost/swagger/index.html |
-| Health       | http://localhost/health             |
+| Service        | URL                                 |
+| -------------- | ----------------------------------- |
+| API via nginx  | http://localhost                    |
+| API direct     | http://localhost:8080               |
+| Swagger UI     | http://localhost/swagger/index.html |
+| Health (nginx) | http://localhost/health             |
+| Nginx health   | http://localhost/nginx-health       |
+| Backend health | http://localhost/backend-health     |
 
 To stop and remove all containers including data volumes:
 
@@ -111,7 +133,7 @@ To stop and remove all containers including data volumes:
 docker compose -f deployments/docker-compose.yml down -v
 ```
 
-> **Note:** If you change the database password after the volume has been created, run `down -v` first to wipe the volume and let postgres reinitialise with the new password.
+> **Note:** If you change the database password after the volume was first created, run `down -v` to wipe the volume so postgres reinitialises with the new password.
 
 ### Running locally
 
@@ -131,7 +153,7 @@ redis:
   host: localhost
 ```
 
-Then run the API:
+Run the API:
 
 ```bash
 make run
@@ -139,7 +161,7 @@ make run
 
 ### Running tests
 
-Integration tests require a running PostgreSQL instance with PostGIS. The easiest way is to use the docker-compose postgres service.
+Integration tests require a running PostgreSQL instance with PostGIS.
 
 ```bash
 # Unit tests
@@ -161,7 +183,7 @@ swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
 
 Base path: `/api/v1`
 
-All successful responses wrap data in a `data` field. Paginated responses also include a `pagination` object.
+All successful responses wrap data in a `data` field. Paginated responses include a `pagination` object.
 
 ### Health
 
@@ -171,6 +193,27 @@ GET /health
 
 ```json
 { "status": "ok", "database": "ok", "timestamp": "2026-09-29T11:00:00Z" }
+```
+
+### Agents
+
+| Method   | Path          | Description                 |
+| -------- | ------------- | --------------------------- |
+| `POST`   | `/agents`     | Create an agent             |
+| `GET`    | `/agents`     | List all agents (paginated) |
+| `GET`    | `/agents/:id` | Get a single agent by UUID  |
+| `PUT`    | `/agents/:id` | Update an agent             |
+| `DELETE` | `/agents/:id` | Delete an agent             |
+
+#### Create / Update agent body
+
+```json
+{
+  "name": "Ada Okafor",
+  "email": "ada@realty.ng",
+  "phone": "+2348011111111",
+  "agency": "Realty NG"
+}
 ```
 
 ### Listings
@@ -184,7 +227,7 @@ GET /health
 | `DELETE` | `/listings/:id`    | Delete a listing              |
 | `GET`    | `/listings/search` | Filter and geo-radius search  |
 
-#### Create / Update body
+#### Create / Update listing body
 
 ```json
 {
@@ -253,19 +296,108 @@ Validation errors return HTTP 422:
 
 ## Interactive Docs
 
-Swagger UI is served at:
+Swagger UI is available at:
 
 ```
 http://localhost/swagger/index.html
 ```
 
-All endpoints are documented with example request bodies and response schemas. You can create agents directly via the postgres container to get a valid `agent_id` for testing:
+All endpoints are documented with example request bodies and response schemas. Create an agent first to get a valid `agent_id`, then use that UUID when creating listings.
+
+---
+
+## Nginx Architecture
+
+The nginx setup is built as its own Docker image (`deployments/nginx/Dockerfile`) with a modular configuration split across numbered files in `conf.d/`. Each file has a single responsibility, making it easy to adjust one concern without touching the others.
+
+### Configuration files
+
+| File                       | Purpose                                                                                                                                                                                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nginx.conf`               | Worker tuning, connection limits, gzip, JSON log formats, global proxy settings, circuit breaker (`proxy_next_upstream`)                                                                                                                                                            |
+| `01-security-headers.conf` | Adds `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Content-Security-Policy`, `Permissions-Policy`, and a custom `X-Property-API-Version` header to every response. Strips `X-Powered-By`, `X-Runtime`, and `Server` from upstream responses. |
+| `02-rate-limiting.conf`    | Defines per-IP rate limit zones: `api_limit` (30 req/s), `search_limit` (10 req/s — tighter because geo queries are more expensive), `strict_limit` (5 req/s), `global_limit` (100 req/s). Also defines connection limit zones.                                                     |
+| `03-bot-detection.conf`    | Three nginx `map` directives: `$is_malicious` (detects SQL injection, XSS, path traversal, null bytes in the request URI), `$is_suspicious` (matches scanner and scraper user-agent strings), `$admin_access` (geo-based allowlist for internal networks).                          |
+| `04-upstreams.conf`        | Defines the `property_api` upstream pointing at `api:8080` with keepalive connection pooling (32 connections, 1000 requests, 60 s timeout).                                                                                                                                         |
+| `05-server-http.conf`      | Main server block on port 80. Includes error pages and security blocks, then defines location blocks in priority order: `/health`, health checks, Swagger, `/api/v1/listings/search` (search-specific rate limit), `/api/v1/` (general API), catch-all JSON 404.                    |
+| `06-server-https.conf`     | TLS server block, fully commented out. Ready to enable by uncommenting and providing certificate paths.                                                                                                                                                                             |
+| `07-error-pages.conf`      | Named locations (`@bad_request`, `@unauthorized`, `@forbidden`, `@not_found`, `@too_many_requests`, `@service_unavailable`, etc.) that return structured JSON for every 4xx and 5xx status code, including a `request_id` field for correlation.                                    |
+| `08-security-blocks.conf`  | Location blocks that return 403 or 404 for hidden files (`.env`, `.git`), backup file extensions (`.bak`, `.log`), admin panel probing (`phpmyadmin`, `wp-login`), SQL injection patterns, XSS patterns, and path traversal patterns.                                               |
+| `10-health-checks.conf`    | `/nginx-health` returns 200 immediately (no upstream needed). `/backend-health` proxies to the API's `/health` endpoint, restricted to internal IP ranges only.                                                                                                                     |
+| `11-content-cache.conf`    | Maps that control cache bypass: non-GET methods always bypass, `Cache-Control: no-cache/no-store` headers bypass.                                                                                                                                                                   |
+| `globalblacklist.conf`     | Comprehensive bad-bot user-agent blocklist (600+ entries) sourced from community-maintained lists. Maps agents to block scores — score 3 is blocked, score 0 is a known good bot (Googlebot, Bingbot, etc.).                                                                        |
+| `swagger-locations.conf`   | `/swagger` and `/docs` redirect to `/swagger/index.html`. `/swagger/*` is proxied to the API with a 1-hour cache header. Malicious request check applied before proxying.                                                                                                           |
+
+### Rate limiting zones
+
+| Zone           | Rate      | Used on                                           |
+| -------------- | --------- | ------------------------------------------------- |
+| `api_limit`    | 30 req/s  | All `/api/v1/` requests (burst 50)                |
+| `search_limit` | 10 req/s  | `/api/v1/listings/search` specifically (burst 20) |
+| `strict_limit` | 5 req/s   | Available for future sensitive endpoints          |
+| `global_limit` | 100 req/s | Global safety net                                 |
+
+### Security layers
+
+Requests pass through multiple independent layers before reaching the API:
+
+1. **Bot blocklist** — user-agent matched against `globalblacklist.conf` before any location block is evaluated
+2. **Attack pattern detection** — `$is_malicious` map checked inside each API location; returns 403 with a structured error before proxying
+3. **Security location blocks** — file-extension and URL-pattern blocks in `08-security-blocks.conf` intercept known attack vectors
+4. **Rate limiting** — per-IP limits applied at the location level, returning 429 with `Retry-After` header via `07-error-pages.conf`
+5. **Security headers** — applied globally via `01-security-headers.conf`, upstream response headers stripped
+
+### Health endpoints
+
+| Endpoint              | Access            | Description                                                   |
+| --------------------- | ----------------- | ------------------------------------------------------------- |
+| `GET /health`         | Public            | Proxied to the API health check                               |
+| `GET /nginx-health`   | Public            | nginx self-check, no upstream needed                          |
+| `GET /backend-health` | Internal IPs only | Proxied to `api:8080/health`, returns 503 JSON if API is down |
+
+### CORS
+
+CORS preflight (`OPTIONS`) requests are handled inline within the API location blocks — no additional middleware needed. Allowed methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`. The `Origin` header is echoed back.
+
+### TLS
+
+`06-server-https.conf` contains a fully commented-out TLS server block ready to activate. To enable HTTPS:
+
+1. Place your certificate at `/etc/nginx/ssl/fullchain.pem` and key at `/etc/nginx/ssl/privkey.pem` inside the nginx container
+2. Uncomment the server block in `06-server-https.conf`
+3. Add a redirect from port 80 to 443 in `05-server-http.conf`
+4. Rebuild the nginx container
+
+---
+
+## Query Logging
+
+SQL queries can be logged directly to the API container logs for debugging. Toggle it in `configs/application.yaml`:
+
+```yaml
+database:
+  log_queries: true # set to false in production
+```
+
+When enabled, every query is logged as a structured JSON line:
+
+```json
+{
+  "level": "debug",
+  "msg": "query executed",
+  "sql": "SELECT id, title ... FROM listings WHERE ...",
+  "args": [6.4281, 3.4219, 5000],
+  "duration": "1.8ms",
+  "rows": 3
+}
+```
+
+Failed queries log at `error` level with an `error` field. The tracer uses pgx's native `Tracer` interface — zero overhead when disabled, no third-party dependency needed.
+
+Tail the logs:
 
 ```bash
-docker exec -it property_postgres psql -U postgres -d property_marketplace \
-  -c "INSERT INTO agents (id, name, email, phone, agency) \
-      VALUES (gen_random_uuid(), 'Test Agent', 'agent@test.com', '+2348000000000', 'Test Realty') \
-      RETURNING id;"
+docker logs property_api -f
 ```
 
 ---
@@ -276,50 +408,53 @@ docker exec -it property_postgres psql -U postgres -d property_marketplace \
 All modules live in one deployable binary but are separated by Go packages (`internal/listing`, `internal/agent`, `internal/search`). This keeps operational complexity low while enforcing clear boundaries that could be extracted into services later without a significant rewrite.
 
 **Use-case layer per operation.**
-Each action (create, get, update, delete, search) is its own struct with a single `Execute` method. This keeps HTTP handlers thin — they translate HTTP concerns into inputs and delegate all logic to the use-case. It also makes business rules unit-testable without needing a real HTTP server.
+Each action (create, get, list, update, delete, search) is its own struct with a single `Execute` method. Handlers translate HTTP concerns into inputs and delegate all logic to the use-case. This keeps handlers thin and makes business rules unit-testable without a real HTTP server.
 
 **Repository interfaces.**
 Every handler and use-case depends on an interface, never a concrete struct. This makes it straightforward to swap the PostgreSQL implementation for an in-memory fake in tests, and documents the data contract explicitly.
 
+**Domain sentinel errors.**
+Repositories return domain errors (`domain.ErrListingNotFound`, `domain.ErrAgentNotFound`) rather than leaking database-layer errors (`pgx.ErrNoRows`) into the business logic. Use-cases check domain errors only — no pgx imports above the repository layer.
+
 **PostGIS `GEOGRAPHY` column for geospatial queries.**
-The `location` column is a `GENERATED ALWAYS AS ST_MakePoint(longitude, latitude)::geography STORED` computed column, derived automatically from the stored lat/lng values. Queries use `ST_DWithin` which works in metres on the WGS-84 spheroid — this is more accurate than planar distance calculations for real-world distances. A GIST index on the column keeps radius searches fast even at scale.
+The `location` column is `GENERATED ALWAYS AS ST_MakePoint(longitude, latitude)::geography STORED` — computed automatically from the stored lat/lng. Queries use `ST_DWithin` which works in metres on the WGS-84 spheroid, more accurate than planar distance for real-world radii. A GIST index keeps radius searches fast at scale.
 
 **Redis cache-aside for search results.**
-Search results are cached for 5 minutes keyed by an MD5 hash of the serialised filter and pagination parameters. The cache client is optional — if Redis is unavailable at startup the API logs a warning and continues without caching. This prevents a Redis outage from taking down the whole service.
+Search results are cached for 5 minutes keyed by an MD5 hash of the serialised filter and pagination parameters. If Redis is unavailable at startup the API logs a warning and continues without caching — a Redis outage cannot take down the API.
 
 **YAML-only configuration.**
-All configuration (database, Redis, server) is read from `configs/application.yaml`. There are no required environment variables. This makes the service easy to reason about locally and in containers — change one file, restart the container.
+All configuration lives in `configs/application.yaml`. No required environment variables. Change one file, restart the container.
 
 **Graceful shutdown.**
-On `SIGINT` or `SIGTERM` the HTTP server stops accepting new connections and waits up to 10 seconds for in-flight requests to complete before exiting. This prevents dropped requests during rolling deploys.
+On `SIGINT` or `SIGTERM` the HTTP server stops accepting connections and waits up to 10 seconds for in-flight requests before exiting. No dropped requests during deploys.
 
 **Non-root Docker image.**
-The production stage runs as a dedicated `appuser` with no shell, keeping the attack surface minimal. The build uses a multi-stage Dockerfile so the final image contains only the compiled binary, config, and migrations — no Go toolchain.
+The production stage runs as a dedicated `appuser` with no shell. Multi-stage build means the final image contains only the binary, config, and migrations — no Go toolchain.
+
+**Modular nginx over a single flat config.**
+Each nginx concern is isolated in its own numbered file. Security headers, rate limiting, bot detection, upstreams, error pages, and attack blocks can each be adjusted independently without risk of breaking an unrelated rule.
 
 ---
 
 ## What I'd Improve with More Time
 
-**Agent HTTP endpoints.**
-The agent domain, repository, and service are fully implemented. The missing piece is an HTTP handler with routes for `POST /agents`, `GET /agents/:id`, `PUT /agents/:id`, `DELETE /agents/:id`. It follows exactly the same pattern as the listing handler and would take under an hour to add.
-
 **Authentication and authorisation.**
-`golang-jwt/jwt` is already in `go.mod`. A JWT middleware would authenticate requests and scope write operations (create/update/delete listing) to the agent who owns them. Without this, any caller can mutate any listing.
+`golang-jwt/jwt` is already in `go.mod`. A JWT middleware would authenticate requests and scope write operations (create/update/delete) to the owning agent.
 
 **Cursor-based pagination.**
-The current `LIMIT / OFFSET` approach degrades in performance as offsets grow large because the database still scans and discards the skipped rows. A keyset cursor using `(created_at, id)` would keep pagination O(1) regardless of page depth.
+`LIMIT / OFFSET` degrades at large offsets — the database scans and discards skipped rows. A keyset cursor on `(created_at, id)` keeps pagination O(1) at any depth.
 
-**Full-text search on title and description.**
-A `tsvector` generated column with a GIN index would enable efficient keyword search within PostgreSQL. For more advanced relevance ranking, faceted search, and typo tolerance, integrating Meilisearch would be the next step — the architecture already isolates search behind its own service, so swapping the backend would not touch the handlers.
+**Full-text search.**
+A `tsvector` generated column with a GIN index enables keyword search within PostgreSQL. For relevance ranking, typo tolerance, and faceted filters, Meilisearch is the next step — the architecture already isolates search behind its own service, so swapping the backend would not touch the handlers.
 
 **Observability.**
-The dependency tree already includes OpenTelemetry and logrus. Wiring up distributed tracing (OTLP exporter), structured request logs with trace IDs, and a Prometheus `/metrics` endpoint would give full production visibility.
+OpenTelemetry and logrus are already in the dependency tree. Wiring up distributed tracing (OTLP exporter), structured request logs with trace IDs, and a Prometheus `/metrics` endpoint would give full production visibility.
 
-**Rate limiting.**
-The search endpoint with a geo query and no rate limit is a potential abuse vector. A token-bucket middleware per IP (or per agent JWT) would protect it. `golang.org/x/time/rate` is in the stdlib ecosystem and requires no new dependency.
+**Per-user rate limiting.**
+Nginx rate limits by IP. Once JWT auth is in place, rate limiting per authenticated user (or per agent tier) would be more accurate and harder to bypass.
 
 **Contract testing.**
-The Swagger spec is already generated. Running `schemathesis` or `oapi-codegen` against the spec in CI would catch any drift between the documented and actual API behaviour automatically.
+The Swagger spec is already generated. Running `schemathesis` against it in CI would catch drift between the documented and actual API behaviour automatically.
 
 **Structured config validation.**
-Currently a missing or zero-valued config field silently produces a broken connection string. Adding validation at startup (required fields, port ranges, non-empty passwords) would surface misconfiguration immediately rather than at the first database call.
+A missing or zero-valued config field silently produces a broken DSN. Validating required fields at startup would surface misconfiguration immediately.
