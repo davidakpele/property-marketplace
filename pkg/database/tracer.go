@@ -15,10 +15,12 @@ type queryTracer struct {
 type traceKey struct{}
 
 type traceData struct {
-	sql    string
-	args   []interface{}
-	start  time.Time
+	sql   string
+	args  []interface{}
+	start time.Time
 }
+
+var traceCtxKey = traceKey{}
 
 func newQueryTracer(log *logrus.Logger) *queryTracer {
 	return &queryTracer{log: log}
@@ -27,7 +29,7 @@ func newQueryTracer(log *logrus.Logger) *queryTracer {
 func (t *queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
 	args := make([]interface{}, len(data.Args))
 	copy(args, data.Args)
-	return context.WithValue(ctx, traceKey{}, traceData{
+	return context.WithValue(ctx, traceCtxKey, traceData{
 		sql:   data.SQL,
 		args:  args,
 		start: time.Now(),
@@ -35,7 +37,7 @@ func (t *queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx
 }
 
 func (t *queryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
-	td, ok := ctx.Value(traceKey{}).(traceData)
+	td, ok := ctx.Value(traceCtxKey).(traceData)
 	if !ok {
 		return
 	}

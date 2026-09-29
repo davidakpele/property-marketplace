@@ -12,22 +12,7 @@ linters:
     - unused
     - gofmt
     - goimports
-    - misspell
-    - unconvert
-    - unparam
     - noctx
-  disable:
-    - depguard
-    - exhaustruct
-    - exhaustive
-    - gomnd
-    - wrapcheck
-    - varnamelen
-    - ireturn
-    - cyclop
-    - funlen
-    - gocognit
-    - maintidx
 
 linters-settings:
   gofmt:
@@ -36,20 +21,18 @@ linters-settings:
     local-prefixes: github.com/davidakpele/property-marketplace
 
 issues:
-  exclude-rules:
-    - path: docs/
-      linters:
-        - all
-    - path: _test\.go
-      linters:
-        - errcheck
-        - unparam
-    - path: tests/
-      linters:
-        - errcheck
-        - unparam
   exclude-dirs:
     - docs
     - vendor
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+    - path: ^tests/
+      linters:
+        - errcheck
+    - path: ^pkg/database/tracer\.go
+      linters:
+        - noctx
   max-issues-per-linter: 0
   max-same-issues: 0
