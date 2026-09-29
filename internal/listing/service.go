@@ -6,12 +6,12 @@ import (
 )
 
 type Service struct {
-	Create  *application.CreateListingUseCase
-	Get     *application.GetListingUseCase
-	List    *application.SearchListingsUseCase
-	Update  *application.UpdateListingUseCase
-	Delete  *application.DeleteListingUseCase
-	Search  *application.SearchListingsUseCase
+	Create *application.CreateListingUseCase
+	Get    *application.GetListingUseCase
+	List   *application.SearchListingsUseCase
+	Update *application.UpdateListingUseCase
+	Delete *application.DeleteListingUseCase
+	Search *application.SearchListingsUseCase
 }
 
 func NewService(repo repository.ListingRepository) *Service {

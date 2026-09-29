@@ -22,11 +22,11 @@ type Listing struct {
 }
 
 type SearchFilters struct {
-	Type         *ListingType
-	MinPrice     *float64
-	MaxPrice     *float64
-	Bedrooms     *int
-	Latitude     *float64
-	Longitude    *float64
-	RadiusKm     *float64
+	Type      *ListingType
+	MinPrice  *float64
+	MaxPrice  *float64
+	Bedrooms  *int
+	Latitude  *float64
+	Longitude *float64
+	RadiusKm  *float64
 }

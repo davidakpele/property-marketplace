@@ -5,12 +5,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/davidakpele/property-marketplace/internal/agent/domain"
 	"github.com/davidakpele/property-marketplace/internal/agent/repository"
 	"github.com/davidakpele/property-marketplace/pkg/httpx"
 	"github.com/davidakpele/property-marketplace/pkg/pagination"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type CreateAgentInput struct {

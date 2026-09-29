@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/davidakpele/property-marketplace/internal/agent/domain"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/davidakpele/property-marketplace/internal/agent/domain"
 )
 
 type postgresAgentRepository struct {

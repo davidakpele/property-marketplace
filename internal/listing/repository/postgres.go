@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 )
 
 type postgresListingRepository struct {

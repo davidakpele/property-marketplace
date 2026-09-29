@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/davidakpele/property-marketplace/internal/listing/repository"
 	"github.com/davidakpele/property-marketplace/pkg/httpx"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type GetListingUseCase struct {

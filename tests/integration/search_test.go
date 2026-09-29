@@ -30,9 +30,9 @@ func TestSearch_ByType(t *testing.T) {
 	agentID := seedAgent(t, pool)
 	r := testRouter(pool)
 
-	insertListing(t, pool, agentID, "rent listing",  "rent",     500000,  2, 6.4281, 3.4219)
-	insertListing(t, pool, agentID, "sale listing",  "sale",     3000000, 3, 6.4280, 3.4296)
-	insertListing(t, pool, agentID, "shortlet flat", "shortlet", 80000,   1, 6.5095, 3.3711)
+	insertListing(t, pool, agentID, "rent listing", "rent", 500000, 2, 6.4281, 3.4219)
+	insertListing(t, pool, agentID, "sale listing", "sale", 3000000, 3, 6.4280, 3.4296)
+	insertListing(t, pool, agentID, "shortlet flat", "shortlet", 80000, 1, 6.5095, 3.3711)
 
 	w := doRequest(t, r, http.MethodGet, "/api/v1/listings/search?type=rent", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -50,8 +50,8 @@ func TestSearch_ByPriceRange(t *testing.T) {
 	agentID := seedAgent(t, pool)
 	r := testRouter(pool)
 
-	insertListing(t, pool, agentID, "cheap",     "rent", 100000,  1, 6.4281, 3.4219)
-	insertListing(t, pool, agentID, "mid",       "rent", 500000,  2, 6.4280, 3.4296)
+	insertListing(t, pool, agentID, "cheap", "rent", 100000, 1, 6.4281, 3.4219)
+	insertListing(t, pool, agentID, "mid", "rent", 500000, 2, 6.4280, 3.4296)
 	insertListing(t, pool, agentID, "expensive", "rent", 5000000, 4, 6.5095, 3.3711)
 
 	w := doRequest(t, r, http.MethodGet, "/api/v1/listings/search?min_price=200000&max_price=1000000", nil)
@@ -90,8 +90,8 @@ func TestSearch_GeoRadius(t *testing.T) {
 	agentID := seedAgent(t, pool)
 	r := testRouter(pool)
 
-	insertListing(t, pool, agentID, "nearby in Lekki",   "rent", 500000, 2, 6.4281, 3.4219)
-	insertListing(t, pool, agentID, "near VI",           "rent", 600000, 2, 6.4280, 3.4296)
+	insertListing(t, pool, agentID, "nearby in Lekki", "rent", 500000, 2, 6.4281, 3.4219)
+	insertListing(t, pool, agentID, "near VI", "rent", 600000, 2, 6.4280, 3.4296)
 	insertListing(t, pool, agentID, "far away in Abuja", "rent", 700000, 2, 9.0820, 7.4891)
 
 	url := "/api/v1/listings/search?lat=6.4281&lng=3.4219&radius_km=5"
@@ -118,10 +118,10 @@ func TestSearch_CombinedFilters(t *testing.T) {
 	agentID := seedAgent(t, pool)
 	r := testRouter(pool)
 
-	insertListing(t, pool, agentID, "match",    "sale", 2000000, 3, 6.4281, 3.4219)
-	insertListing(t, pool, agentID, "no-type",  "rent", 2000000, 3, 6.4280, 3.4296)
+	insertListing(t, pool, agentID, "match", "sale", 2000000, 3, 6.4281, 3.4219)
+	insertListing(t, pool, agentID, "no-type", "rent", 2000000, 3, 6.4280, 3.4296)
 	insertListing(t, pool, agentID, "no-price", "sale", 9000000, 3, 6.4282, 3.4210)
-	insertListing(t, pool, agentID, "no-bed",   "sale", 2000000, 1, 6.4283, 3.4220)
+	insertListing(t, pool, agentID, "no-bed", "sale", 2000000, 1, 6.4283, 3.4220)
 
 	url := "/api/v1/listings/search?type=sale&min_price=1000000&max_price=5000000&bedrooms=3"
 	w := doRequest(t, r, http.MethodGet, url, nil)

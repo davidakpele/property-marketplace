@@ -3,9 +3,10 @@ package handler
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/davidakpele/property-marketplace/pkg/pagination"
-	"github.com/google/uuid"
 )
 
 type ListingResponse struct {
@@ -28,8 +29,8 @@ type DataResponse struct {
 }
 
 type DataListResponse struct {
-	Data       []ListingResponse  `json:"data"`
-	Pagination pagination.Meta    `json:"pagination"`
+	Data       []ListingResponse `json:"data"`
+	Pagination pagination.Meta   `json:"pagination"`
 }
 
 type ErrorResponse struct {

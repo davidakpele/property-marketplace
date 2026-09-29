@@ -24,6 +24,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/goccy/go-yaml"
+	"github.com/jackc/pgx/v5/pgxpool"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "github.com/davidakpele/property-marketplace/docs"
 	"github.com/davidakpele/property-marketplace/internal/agent"
 	agentrepo "github.com/davidakpele/property-marketplace/internal/agent/repository"
 	"github.com/davidakpele/property-marketplace/internal/health"
@@ -31,16 +39,9 @@ import (
 	listinghandler "github.com/davidakpele/property-marketplace/internal/listing/handler"
 	listingrepo "github.com/davidakpele/property-marketplace/internal/listing/repository"
 	"github.com/davidakpele/property-marketplace/internal/search"
-	_ "github.com/davidakpele/property-marketplace/docs"
 	"github.com/davidakpele/property-marketplace/pkg/cache"
 	"github.com/davidakpele/property-marketplace/pkg/database"
 	"github.com/davidakpele/property-marketplace/pkg/logger"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/goccy/go-yaml"
-	"github.com/jackc/pgx/v5/pgxpool"
-	swaggerfiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Config struct {

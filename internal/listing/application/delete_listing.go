@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/davidakpele/property-marketplace/internal/listing/repository"
-	"github.com/davidakpele/property-marketplace/pkg/httpx"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/davidakpele/property-marketplace/internal/listing/repository"
+	"github.com/davidakpele/property-marketplace/pkg/httpx"
 )
 
 type DeleteListingUseCase struct {

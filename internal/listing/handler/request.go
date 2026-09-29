@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/google/uuid"
+
+	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 )
 
 type CreateListingRequest struct {

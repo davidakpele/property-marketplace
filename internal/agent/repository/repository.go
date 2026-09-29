@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 
-	"github.com/davidakpele/property-marketplace/internal/agent/domain"
 	"github.com/google/uuid"
+
+	"github.com/davidakpele/property-marketplace/internal/agent/domain"
 )
 
 type AgentRepository interface {

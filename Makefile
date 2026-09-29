@@ -30,7 +30,8 @@ lint:
 	golangci-lint run ./...
 
 fmt:
-	gofmt -w -s .
+	gofmt -w -s ./cmd ./internal ./pkg ./tests
+	goimports -w -local $(MODULE) $(shell find ./cmd ./internal ./pkg ./tests -name "*.go")
 
 vet:
 	go vet ./...

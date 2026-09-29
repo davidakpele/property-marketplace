@@ -3,6 +3,9 @@ package handler
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
 	listingsvc "github.com/davidakpele/property-marketplace/internal/listing"
 	"github.com/davidakpele/property-marketplace/internal/listing/application"
 	listingdomain "github.com/davidakpele/property-marketplace/internal/listing/domain"
@@ -10,8 +13,6 @@ import (
 	"github.com/davidakpele/property-marketplace/pkg/httpx"
 	"github.com/davidakpele/property-marketplace/pkg/pagination"
 	"github.com/davidakpele/property-marketplace/pkg/validation"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type Handler struct {

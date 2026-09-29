@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/davidakpele/property-marketplace/internal/listing/repository"
 	"github.com/davidakpele/property-marketplace/pkg/httpx"
-	"github.com/google/uuid"
 )
 
 type CreateListingInput struct {

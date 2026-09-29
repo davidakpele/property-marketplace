@@ -10,16 +10,17 @@ import (
 	"os"
 	"testing"
 
-	listing "github.com/davidakpele/property-marketplace/internal/listing"
-	listinghandler "github.com/davidakpele/property-marketplace/internal/listing/handler"
-	listingrepo "github.com/davidakpele/property-marketplace/internal/listing/repository"
-	"github.com/davidakpele/property-marketplace/internal/search"
-	"github.com/davidakpele/property-marketplace/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	listing "github.com/davidakpele/property-marketplace/internal/listing"
+	listinghandler "github.com/davidakpele/property-marketplace/internal/listing/handler"
+	listingrepo "github.com/davidakpele/property-marketplace/internal/listing/repository"
+	"github.com/davidakpele/property-marketplace/internal/search"
+	"github.com/davidakpele/property-marketplace/pkg/database"
 )
 
 func testPool(t *testing.T) *pgxpool.Pool {
