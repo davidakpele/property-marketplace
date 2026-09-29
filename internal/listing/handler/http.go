@@ -113,7 +113,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 func (h *Handler) List(c *gin.Context) {
 	params := pagination.FromContext(c)
 
-	listings, total, err := h.svc.List.Execute(c.Request.Context(), listingdomain.SearchFilters{}, params)
+	listings, total, err := h.svc.List.Execute(c.Request.Context(), params)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return

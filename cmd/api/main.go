@@ -9,6 +9,9 @@
 // @tag.name  listings
 // @tag.description  CRUD and search operations for property listings
 
+// @tag.name  agents
+// @tag.description  CRUD operations for agents
+
 // @tag.name  health
 // @tag.description  Service health check
 
@@ -33,6 +36,7 @@ import (
 
 	_ "github.com/davidakpele/property-marketplace/docs"
 	"github.com/davidakpele/property-marketplace/internal/agent"
+	agenthandler "github.com/davidakpele/property-marketplace/internal/agent/handler"
 	agentrepo "github.com/davidakpele/property-marketplace/internal/agent/repository"
 	"github.com/davidakpele/property-marketplace/internal/health"
 	listing "github.com/davidakpele/property-marketplace/internal/listing"
@@ -50,12 +54,13 @@ type Config struct {
 		Port int    `yaml:"port"`
 	} `yaml:"server"`
 	Database struct {
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		Name     string `yaml:"name"`
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		SSLMode  string `yaml:"ssl_mode"`
+		Host       string `yaml:"host"`
+		Port       int    `yaml:"port"`
+		Name       string `yaml:"name"`
+		User       string `yaml:"user"`
+		Password   string `yaml:"password"`
+		SSLMode    string `yaml:"ssl_mode"`
+		LogQueries bool   `yaml:"log_queries"`
 	} `yaml:"database"`
 	Redis struct {
 		Host     string `yaml:"host"`
@@ -107,12 +112,13 @@ func main() {
 	defer cancel()
 
 	dbCfg := database.Config{
-		Host:     cfg.Database.Host,
-		Port:     cfg.Database.Port,
-		Name:     cfg.Database.Name,
-		User:     cfg.Database.User,
-		Password: cfg.Database.Password,
-		SSLMode:  cfg.Database.SSLMode,
+		Host:       cfg.Database.Host,
+		Port:       cfg.Database.Port,
+		Name:       cfg.Database.Name,
+		User:       cfg.Database.User,
+		Password:   cfg.Database.Password,
+		SSLMode:    cfg.Database.SSLMode,
+		LogQueries: cfg.Database.LogQueries,
 	}
 
 	pool, err := connectWithRetry(ctx, dbCfg)
@@ -145,9 +151,8 @@ func main() {
 	agentRepo := agentrepo.NewPostgresAgentRepository(pool)
 
 	listingSvc := listing.NewService(listingRepo)
+	agentSvc := agent.NewService(agentRepo)
 	searchSvc := search.NewService(listingRepo, cacheClient)
-
-	_ = agent.NewService(agentRepo)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -165,6 +170,7 @@ func main() {
 
 	health.NewHandler(pool).RegisterRoutes(r)
 	listinghandler.NewHandler(listingSvc, searchSvc).RegisterRoutes(api)
+	agenthandler.NewHandler(agentSvc).RegisterRoutes(api)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 

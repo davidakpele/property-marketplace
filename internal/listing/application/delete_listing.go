@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
+	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/davidakpele/property-marketplace/internal/listing/repository"
 	"github.com/davidakpele/property-marketplace/pkg/httpx"
 )
@@ -22,7 +22,7 @@ func NewDeleteListingUseCase(repo repository.ListingRepository) *DeleteListingUs
 func (uc *DeleteListingUseCase) Execute(ctx context.Context, id uuid.UUID) error {
 	err := uc.repo.Delete(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, domain.ErrListingNotFound) {
 			return httpx.NewNotFound("listing not found")
 		}
 		return httpx.NewInternal("failed to delete listing")

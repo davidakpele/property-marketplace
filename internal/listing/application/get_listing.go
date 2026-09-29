@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/davidakpele/property-marketplace/internal/listing/repository"
@@ -23,7 +22,7 @@ func NewGetListingUseCase(repo repository.ListingRepository) *GetListingUseCase 
 func (uc *GetListingUseCase) Execute(ctx context.Context, id uuid.UUID) (*domain.Listing, error) {
 	l, err := uc.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, domain.ErrListingNotFound) {
 			return nil, httpx.NewNotFound("listing not found")
 		}
 		return nil, httpx.NewInternal("failed to get listing")

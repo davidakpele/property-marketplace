@@ -138,7 +138,7 @@ func (r *postgresListingRepository) Update(ctx context.Context, l *domain.Listin
 		return fmt.Errorf("update listing: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+		return domain.ErrListingNotFound
 	}
 	return nil
 }
@@ -149,7 +149,7 @@ func (r *postgresListingRepository) Delete(ctx context.Context, id uuid.UUID) er
 		return fmt.Errorf("delete listing: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+		return domain.ErrListingNotFound
 	}
 	return nil
 }
@@ -162,7 +162,7 @@ func scanListing(row pgx.Row) (*domain.Listing, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, pgx.ErrNoRows
+			return nil, domain.ErrListingNotFound
 		}
 		return nil, fmt.Errorf("scan listing: %w", err)
 	}

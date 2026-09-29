@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/davidakpele/property-marketplace/internal/listing/domain"
 	"github.com/davidakpele/property-marketplace/internal/listing/repository"
@@ -36,7 +35,7 @@ func NewUpdateListingUseCase(repo repository.ListingRepository) *UpdateListingUs
 func (uc *UpdateListingUseCase) Execute(ctx context.Context, id uuid.UUID, in UpdateListingInput) (*domain.Listing, error) {
 	l, err := uc.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, domain.ErrListingNotFound) {
 			return nil, httpx.NewNotFound("listing not found")
 		}
 		return nil, httpx.NewInternal("failed to get listing")
@@ -58,6 +57,9 @@ func (uc *UpdateListingUseCase) Execute(ctx context.Context, id uuid.UUID, in Up
 	l.UpdatedAt = time.Now().UTC()
 
 	if err := uc.repo.Update(ctx, l); err != nil {
+		if errors.Is(err, domain.ErrListingNotFound) {
+			return nil, httpx.NewNotFound("listing not found")
+		}
 		return nil, httpx.NewInternal("failed to update listing")
 	}
 	return l, nil

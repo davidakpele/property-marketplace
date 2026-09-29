@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/davidakpele/property-marketplace/internal/agent/domain"
 	"github.com/davidakpele/property-marketplace/internal/agent/repository"
@@ -38,7 +37,7 @@ func NewService(repo repository.AgentRepository) *Service {
 
 func (s *Service) Create(ctx context.Context, in CreateAgentInput) (*domain.Agent, error) {
 	existing, err := s.repo.GetByEmail(ctx, in.Email)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !errors.Is(err, domain.ErrAgentNotFound) {
 		return nil, httpx.NewInternal("failed to check agent email")
 	}
 	if existing != nil {
@@ -65,7 +64,7 @@ func (s *Service) Create(ctx context.Context, in CreateAgentInput) (*domain.Agen
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*domain.Agent, error) {
 	a, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, domain.ErrAgentNotFound) {
 			return nil, httpx.NewNotFound("agent not found")
 		}
 		return nil, httpx.NewInternal("failed to get agent")
@@ -84,7 +83,7 @@ func (s *Service) List(ctx context.Context, params pagination.Params) ([]*domain
 func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateAgentInput) (*domain.Agent, error) {
 	a, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, domain.ErrAgentNotFound) {
 			return nil, httpx.NewNotFound("agent not found")
 		}
 		return nil, httpx.NewInternal("failed to get agent")
@@ -92,7 +91,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateAgentInput)
 
 	if in.Email != a.Email {
 		existing, err := s.repo.GetByEmail(ctx, in.Email)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		if err != nil && !errors.Is(err, domain.ErrAgentNotFound) {
 			return nil, httpx.NewInternal("failed to check agent email")
 		}
 		if existing != nil {
@@ -107,6 +106,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateAgentInput)
 	a.UpdatedAt = time.Now().UTC()
 
 	if err := s.repo.Update(ctx, a); err != nil {
+		if errors.Is(err, domain.ErrAgentNotFound) {
+			return nil, httpx.NewNotFound("agent not found")
+		}
 		return nil, httpx.NewInternal("failed to update agent")
 	}
 	return a, nil
@@ -115,7 +117,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateAgentInput)
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	err := s.repo.Delete(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, domain.ErrAgentNotFound) {
 			return httpx.NewNotFound("agent not found")
 		}
 		return httpx.NewInternal("failed to delete agent")

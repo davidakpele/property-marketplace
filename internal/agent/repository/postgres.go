@@ -76,7 +76,7 @@ func (r *postgresAgentRepository) Update(ctx context.Context, a *domain.Agent) e
 		return fmt.Errorf("update agent: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+		return domain.ErrAgentNotFound
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func (r *postgresAgentRepository) Delete(ctx context.Context, id uuid.UUID) erro
 		return fmt.Errorf("delete agent: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+		return domain.ErrAgentNotFound
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func scanAgent(row pgx.Row) (*domain.Agent, error) {
 	err := row.Scan(&a.ID, &a.Name, &a.Email, &a.Phone, &a.Agency, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, pgx.ErrNoRows
+			return nil, domain.ErrAgentNotFound
 		}
 		return nil, fmt.Errorf("scan agent: %w", err)
 	}

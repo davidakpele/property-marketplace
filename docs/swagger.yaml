@@ -11,6 +11,115 @@ definitions:
       total_pages:
         type: integer
     type: object
+  internal_agent_handler.AgentResponse:
+    properties:
+      agency:
+        example: Realty NG
+        type: string
+      created_at:
+        type: string
+      email:
+        example: ada@realty.ng
+        type: string
+      id:
+        example: a1000000-0000-0000-0000-000000000001
+        type: string
+      name:
+        example: Ada Okafor
+        type: string
+      phone:
+        example: "+2348011111111"
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_agent_handler.CreateAgentRequest:
+    properties:
+      agency:
+        example: Realty NG
+        maxLength: 255
+        minLength: 2
+        type: string
+      email:
+        example: ada@realty.ng
+        type: string
+      name:
+        example: Ada Okafor
+        maxLength: 255
+        minLength: 2
+        type: string
+      phone:
+        example: "+2348011111111"
+        maxLength: 50
+        minLength: 7
+        type: string
+    required:
+    - agency
+    - email
+    - name
+    - phone
+    type: object
+  internal_agent_handler.DataListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_agent_handler.AgentResponse'
+        type: array
+      pagination: {}
+    type: object
+  internal_agent_handler.DataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_agent_handler.AgentResponse'
+    type: object
+  internal_agent_handler.ErrorResponse:
+    properties:
+      message:
+        example: agent not found
+        type: string
+    type: object
+  internal_agent_handler.UpdateAgentRequest:
+    properties:
+      agency:
+        example: Realty NG
+        maxLength: 255
+        minLength: 2
+        type: string
+      email:
+        example: ada@realty.ng
+        type: string
+      name:
+        example: Ada Okafor
+        maxLength: 255
+        minLength: 2
+        type: string
+      phone:
+        example: "+2348011111111"
+        maxLength: 50
+        minLength: 7
+        type: string
+    required:
+    - agency
+    - email
+    - name
+    - phone
+    type: object
+  internal_agent_handler.ValidationErrorResponse:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/internal_agent_handler.ValidationFieldError'
+        type: array
+    type: object
+  internal_agent_handler.ValidationFieldError:
+    properties:
+      field:
+        example: email
+        type: string
+      message:
+        example: must be a valid email address
+        type: string
+    type: object
   internal_health.HealthResponse:
     properties:
       database:
@@ -205,6 +314,171 @@ info:
   title: Property Marketplace API
   version: "1.0"
 paths:
+  /agents:
+    get:
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_agent_handler.DataListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+      summary: List all agents
+      tags:
+      - agents
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent payload
+        in: body
+        name: agent
+        required: true
+        schema:
+          $ref: '#/definitions/internal_agent_handler.CreateAgentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_agent_handler.DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ValidationErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+      summary: Create an agent
+      tags:
+      - agents
+  /agents/{id}:
+    delete:
+      parameters:
+      - description: Agent UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+      summary: Delete an agent
+      tags:
+      - agents
+    get:
+      parameters:
+      - description: Agent UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_agent_handler.DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+      summary: Get an agent by ID
+      tags:
+      - agents
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated agent payload
+        in: body
+        name: agent
+        required: true
+        schema:
+          $ref: '#/definitions/internal_agent_handler.UpdateAgentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_agent_handler.DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ValidationErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_agent_handler.ErrorResponse'
+      summary: Update an agent
+      tags:
+      - agents
   /health:
     get:
       produces:
@@ -449,5 +723,7 @@ swagger: "2.0"
 tags:
 - description: CRUD and search operations for property listings
   name: listings
+- description: CRUD operations for agents
+  name: agents
 - description: Service health check
   name: health
