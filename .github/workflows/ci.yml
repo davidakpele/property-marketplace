@@ -26,8 +26,6 @@ jobs:
         with:
           version: latest
           args: --timeout=5m
-        env:
-          GOTOOLCHAIN: auto
 
   test:
     name: Test
@@ -68,17 +66,12 @@ jobs:
 
       - name: Download dependencies
         run: go mod download
-        env:
-          GOTOOLCHAIN: auto
 
       - name: Run unit tests
         run: go test -v -race -count=1 ./internal/... ./pkg/...
-        env:
-          GOTOOLCHAIN: auto
 
       - name: Run integration tests
         env:
-          GOTOOLCHAIN: auto
           DB_HOST: localhost
           DB_PORT: "5432"
           DB_NAME: property_marketplace_test
@@ -108,8 +101,6 @@ jobs:
             -ldflags="-w -s" \
             -o /tmp/api \
             ./cmd/api
-        env:
-          GOTOOLCHAIN: auto
 
       - name: Build Docker image
         run: docker build -f deployments/Dockerfile -t property-marketplace:ci .
